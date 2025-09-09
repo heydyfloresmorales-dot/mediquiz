@@ -2,27 +2,117 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Prueba Conexión GAS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediQuiz - Sistema de Preguntas Médicas</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      text-align: center;
+      padding: 2rem;
+    }
+    h1 {
+      color: #2c3e50;
+    }
+    #quiz-container {
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .option {
+      display: block;
+      width: 100%;
+      margin: 0.5rem 0;
+      padding: 0.75rem;
+      background: #ecf0f1;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .option:hover {
+      background: #d0d7de;
+    }
+    .correct {
+      background: #2ecc71 !important;
+      color: white;
+    }
+    .incorrect {
+      background: #e74c3c !important;
+      color: white;
+    }
+    #next-btn {
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <h1>🔌 Prueba de conexión con Google Apps Script</h1>
-  <button onclick="probarConexion()">Probar conexión</button>
-  <pre id="resultado">Esperando...</pre>
+  <h1>🩺 MediQuiz</h1>
+  <div id="quiz-container">
+    <h2 id="pregunta">Cargando pregunta...</h2>
+    <div id="opciones"></div>
+    <button id="next-btn" onclick="cargarPregunta()">Siguiente pregunta</button>
+  </div>
 
   <script>
-    // 👉 Pega aquí la URL de TU Apps Script desplegado como web app
-    const API_URL = "https://script.google.com/macros/s/AKfycbwpInPlhV8pFdjQhAnUs5nQE7UtAr7l01da9y7tvgQrKr2Q314eFasQv4bd3AFYGDoW/exec";
+    // 👉 URL de tu Apps Script desplegado como Web App
+    const API_URL = "https://script.google.com/macros/s/AKfycbwcxdq2FmMjvxjPVtthdQcr6eTMwnViuVN42lWHnFngaU2tqqvKe1GPfyVJ4dvW6Q1b/exec";
 
-    async function probarConexion() {
-      document.getElementById("resultado").textContent = "Conectando...";
+    async function cargarPregunta() {
+      document.getElementById("pregunta").textContent = "Cargando...";
+      document.getElementById("opciones").innerHTML = "";
+      document.getElementById("next-btn").style.display = "none";
+
       try {
-        const response = await fetch(`${API_URL}?action=test`);
-        const data = await response.json();
-        document.getElementById("resultado").textContent = JSON.stringify(data, null, 2);
+        const res = await fetch(`${API_URL}?action=getPregunta`);
+        const data = await res.json();
+
+        document.getElementById("pregunta").textContent = data.texto;
+
+        const opciones = ["opcionA", "opcionB", "opcionC", "opcionD"];
+        opciones.forEach(op => {
+          const btn = document.createElement("button");
+          btn.textContent = data[op];
+          btn.className = "option";
+          btn.onclick = () => seleccionarRespuesta(btn, data.correcta);
+          document.getElementById("opciones").appendChild(btn);
+        });
       } catch (err) {
-        document.getElementById("resultado").textContent = "❌ Error: " + err.message;
+        document.getElementById("pregunta").textContent = "❌ Error cargando pregunta";
       }
     }
+
+    function seleccionarRespuesta(boton, correcta) {
+      const botones = document.querySelectorAll(".option");
+      botones.forEach(b => b.disabled = true);
+
+      if (boton.textContent === correcta) {
+        boton.classList.add("correct");
+      } else {
+        boton.classList.add("incorrect");
+        botones.forEach(b => {
+          if (b.textContent === correcta) {
+            b.classList.add("correct");
+          }
+        });
+      }
+
+      document.getElementById("next-btn").style.display = "block";
+    }
+
+    // Cargar la primera pregunta al iniciar
+    cargarPregunta();
   </script>
 </body>
 </html>
