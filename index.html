@@ -2,25 +2,44 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>MediQuiz Test</title>
+  <title>MediQuiz Pregunta</title>
 </head>
-<body style="font-family: Arial, sans-serif; background:#f4f4f4; color:#05183D; text-align:center; padding:50px;">
-  <h1>🔍 Test de Conexión MediQuiz</h1>
-  <p id="output">Conectando con Google Apps Script...</p>
+<body style="font-family: Arial, sans-serif; background:#f4f4f4; color:#05183D; padding:30px; max-width:600px; margin:auto;">
+  <h1>📚 MediQuiz</h1>
+  <div id="pregunta">Cargando pregunta...</div>
 
   <script>
+    // URL de tu Apps Script publicado como Web App
     const apiURL = "https://script.google.com/macros/s/AKfycbwcxdq2FmMjvxjPVtthdQcr6eTMwnViuVN42lWHnFngaU2tqqvKe1GPfyVJ4dvW6Q1b/exec";
 
     fetch(apiURL)
       .then(res => res.json())
       .then(data => {
-        console.log("Respuesta del servidor:", data);
-        document.getElementById("output").innerText = "✅ Conexión OK: " + data.message;
+        console.log("Pregunta recibida:", data);
+
+        document.getElementById("pregunta").innerHTML = `
+          <h2>${data.texto}</h2>
+          <ul>
+            <li>A) ${data.opcionA}</li>
+            <li>B) ${data.opcionB}</li>
+            <li>C) ${data.opcionC}</li>
+            <li>D) ${data.opcionD}</li>
+          </ul>
+        `;
       })
       .catch(err => {
-        console.error("Error en fetch:", err);
-        document.getElementById("output").innerText = "❌ Error al conectar con el servidor";
+        console.error("Error:", err);
+        document.getElementById("pregunta").innerText = "❌ No se pudo cargar la pregunta";
       });
   </script>
 </body>
 </html>
+
+    
+    
+    
+    
+    
+    
+
+  
