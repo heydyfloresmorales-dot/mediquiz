@@ -1,75 +1,56 @@
-<script>
-async function testConnection() {
-    const sheetsUrl = document.getElementById('sheetsUrl').value.trim();
-    const gasUrl = document.getElementById('gasUrl').value.trim();
-    
-    if (!sheetsUrl || !gasUrl) {
-        alert('Por favor ingresa ambas URLs');
-        return;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📚 MediQuiz</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; color: #05183D; padding: 20px; }
+    h1 { color: #245175; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); margin: 10px 0; }
+    .option { margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <h1>📚 MediQuiz</h1>
+  <div class="card" id="status">🔍 Conectando con MediQuiz API...</div>
+  <div class="card" id="question"></div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbxRqeXv3TdqBxQqJnioekm7qGldOTz2gmL3gjUjqjTWfcfdr6BlibLqhpecD_eAHgyX/exec";
+
+    // 🔹 1. Verificar conexión con la API
+    async function testConnection() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        document.getElementById("status").innerHTML = 
+          `🔍 Test de Conexión MediQuiz<br>✅ ${data.message}`;
+      } catch (err) {
+        document.getElementById("status").innerHTML = 
+          `❌ Error de conexión: ${err.message}`;
+      }
     }
 
-    const testBtn = document.querySelector('button[onclick="testConnection()"]');
-    const testBtnText = document.getElementById('testBtnText');
-    const testLoading = document.getElementById('testLoading');
-    
-    testBtn.disabled = true;
-    testBtnText.style.display = 'none';
-    testLoading.classList.remove('hidden');
-    
-    log('Probando conexión con Google Apps Script...');
-
-    try {
-        // Extraer ID del Sheets si es URL completa
-        const sheetsId = extractSheetsId(sheetsUrl);
-
-        // Probar conexión con Google Apps Script (GET)
-        const response = await fetch(gasUrl);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const data = await response.json();
-
-        if (data.success) {
-            sheetsConnected = true;
-            systemData.sheetsId = sheetsId;
-            systemData.gasUrl = gasUrl;
-
-            // Guardar configuración
-            localStorage.setItem('mediquiz_config', JSON.stringify({
-                sheetsId: sheetsId,
-                gasUrl: gasUrl
-            }));
-
-            updateStatusCard('sheetsStatus', 'success', 'Google Sheets', 'Conectado correctamente');
-            log(`✅ Conexión exitosa: ${data.message}`);
-
-            // Si el script devuelve metadata opcional
-            if (data.metadata) {
-                systemData.totalQuestions = data.metadata.totalQuestions || 0;
-                systemData.specialties = data.metadata.specialties || [];
-                updateSystemInfo();
-            }
-        } else {
-            throw new Error(data.error || 'Respuesta inválida');
-        }
-
-    } catch (error) {
-        sheetsConnected = false;
-        updateStatusCard('sheetsStatus', 'error', 'Google Sheets', `Error: ${error.message}`);
-        log(`❌ Error de conexión: ${error.message}`);
+    // 🔹 2. Cargar una pregunta de ejemplo
+    async function loadQuestion() {
+      try {
+        const res = await fetch(API_URL + "?action=getQuestion");
+        const q = await res.json();
+        document.getElementById("question").innerHTML = `
+          <h3>${q.texto}</h3>
+          <div class="option">A) ${q.opcionA}</div>
+          <div class="option">B) ${q.opcionB}</div>
+          <div class="option">C) ${q.opcionC}</div>
+          <div class="option">D) ${q.opcionD}</div>
+        `;
+      } catch (err) {
+        document.getElementById("question").innerHTML = "❌ Error cargando la pregunta.";
+      }
     }
 
-    testBtn.disabled = false;
-    testBtnText.style.display = 'inline';
-    testLoading.classList.add('hidden');
-    
-    updateConnectionStatus();
-    updateUI();
-}
-</script>
-
-    
-    
-    
-    
-
-  
+    // Ejecutar al cargar la página
+    testConnection().then(loadQuestion);
+  </script>
+</body>
+</html>
