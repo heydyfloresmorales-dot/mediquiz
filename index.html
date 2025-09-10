@@ -3,69 +3,125 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MediQuiz - Test Conexión y Pregunta</title>
+<title>MediQuiz - Test</title>
 <style>
-body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
-.container { max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);}
-button { padding: 10px 20px; margin-top: 10px; cursor: pointer; }
-#questionCard { margin-top: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: #fafafa; }
-.option { margin: 5px 0; }
-.loading { display: none; }
+body { font-family: Arial, sans-serif; background:#f4f4f4; padding:20px; }
+.container { max-width:800px; margin:0 auto; }
+header { text-align:center; margin-bottom:20px; }
+h1 { color:#05183D; }
+.card { background:#fff; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+button { padding:10px 20px; margin:5px; cursor:pointer; border:none; border-radius:5px; background:#245175; color:#fff; }
+button:disabled { background:#ccc; cursor:not-allowed; }
+#activityLog { background:#eee; padding:10px; max-height:150px; overflow-y:auto; font-family:monospace; font-size:14px; }
+.question { margin-top:20px; }
+.option { margin:5px 0; }
 </style>
 </head>
 <body>
 <div class="container">
+<header>
 <h1>📚 MediQuiz - Test</h1>
+<p>Prueba de conexión y carga de preguntas</p>
+</header>
+
+<div class="card">
+<h2>Configuración</h2>
+<label for="sheetsUrl">ID o URL de Google Sheets:</label>
+<input type="text" id="sheetsUrl" placeholder="ID del Sheet">
 
 <label for="gasUrl">URL del Google Apps Script:</label>
-<input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+<input type="text" id="gasUrl" placeholder="URL del Web App">
 
 <button onclick="testConnection()">Probar Conexión</button>
-<div id="status"></div>
+<button onclick="loadQuestions()" id="loadBtn" disabled>Cargar Preguntas</button>
+</div>
 
-<div id="questionCard" class="hidden">
-    <h3 id="questionText"></h3>
-    <div class="option" id="optA"></div>
-    <div class="option" id="optB"></div>
-    <div class="option" id="optC"></div>
-    <div class="option" id="optD"></div>
+<div class="card" id="questionCard" style="display:none;">
+<h2>Pregunta</h2>
+<div id="questionText"></div>
+<div id="options"></div>
+</div>
+
+<div class="card">
+<h2>Log</h2>
+<div id="activityLog"></div>
 </div>
 </div>
 
 <script>
+let systemData = { sheetsId:'', gasUrl:'', questions:[] };
+
+function log(msg) {
+    const logEl = document.getElementById('activityLog');
+    const ts = new Date().toLocaleTimeString();
+    logEl.innerHTML += `[${ts}] ${msg}<br>`;
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function extractSheetsId(url) {
+    if (/^[a-zA-Z0-9-_]+$/.test(url)) return url;
+    const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    return m ? m[1] : url;
+}
+
 async function testConnection() {
+    const sheetsUrl = document.getElementById('sheetsUrl').value.trim();
     const gasUrl = document.getElementById('gasUrl').value.trim();
-    const statusEl = document.getElementById('status');
-    if (!gasUrl) { alert('Ingresa el URL del Apps Script'); return; }
+    if(!sheetsUrl || !gasUrl){ alert('Ingresa ambos'); return; }
+    systemData.sheetsId = extractSheetsId(sheetsUrl);
+    systemData.gasUrl = gasUrl;
 
-    statusEl.textContent = '⏳ Probando conexión...';
+    log('Probando conexión...');
     try {
-        const response = await fetch(gasUrl, { method: 'GET', mode: 'cors' });
-        const data = await response.json();
-
-        if(data.success) {
-            statusEl.textContent = `✅ Conexión OK: ${data.message}`;
-            // Si la API devuelve una pregunta, mostrarla
-            if(data.id || data.texto) { 
-                showQuestion(data);
-            }
+        const res = await fetch(gasUrl, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({ action:'test', sheetsId: systemData.sheetsId })
+        });
+        const data = await res.json();
+        if(data.success){
+            log('✅ Conexión OK: ' + data.message);
+            document.getElementById('loadBtn').disabled = false;
         } else {
-            statusEl.textContent = `❌ Error: ${data.error || 'Desconocido'}`;
+            throw new Error(data.error || 'Error desconocido');
         }
-    } catch(err) {
-        statusEl.textContent = `❌ Error de conexión: ${err.message}`;
+    } catch(e){
+        log('❌ Error: ' + e.message);
     }
 }
 
-function showQuestion(q) {
-    document.getElementById('questionCard').classList.remove('hidden');
+async function loadQuestions() {
+    log('Cargando preguntas...');
+    try {
+        const res = await fetch(systemData.gasUrl, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({ action:'getQuestions', sheetsId: systemData.sheetsId })
+        });
+        const data = await res.json();
+        if(data.success){
+            systemData.questions = data.questions;
+            log(`✅ ${data.questions.length} preguntas cargadas`);
+            showQuestion(0);
+        } else {
+            throw new Error(data.error || 'Error cargando preguntas');
+        }
+    } catch(e){
+        log('❌ Error: ' + e.message);
+    }
+}
+
+function showQuestion(index){
+    if(!systemData.questions.length) return;
+    const q = systemData.questions[index];
+    document.getElementById('questionCard').style.display = 'block';
     document.getElementById('questionText').textContent = q.texto;
-    document.getElementById('optA').textContent = 'A) ' + q.opcionA;
-    document.getElementById('optB').textContent = 'B) ' + q.opcionB;
-    document.getElementById('optC').textContent = 'C) ' + q.opcionC;
-    document.getElementById('optD').textContent = 'D) ' + q.opcionD;
+    const opts = ['opcionA','opcionB','opcionC','opcionD'];
+    const optsHtml = opts.map(o => `<div class="option">${q[o]}</div>`).join('');
+    document.getElementById('options').innerHTML = optsHtml;
 }
 </script>
 </body>
 </html>
+
 
